@@ -13,16 +13,16 @@ from trend2video.apps.api.deps import (
     get_trend_source,
 )
 from trend2video.domain.entities.brand import BrandContext
+from trend2video.domain.entities.trend import TrendStatus
 from trend2video.domain.services.script_engine import ScriptEngine
 from trend2video.domain.services.template_resolver import TemplateResolver
 from trend2video.domain.services.trend_scorer import TrendScorer
+from trend2video.domain.services.trend_normalizer import TrendNormalizer
 from trend2video.integrations.tiktok.trend_source_base import TrendSource
+from trend2video.apps.api.deps import get_script_repository
 from trend2video.persistence.repositories.script_repository import ScriptRepository
 from trend2video.persistence.repositories.template_repository import TemplateRepository
 from trend2video.persistence.repositories.trend_repository import TrendRepository
-from trend2video.persistence.repositories.script_repository import ScriptRepository
-from trend2video.apps.api.deps import get_script_repository
-from trend2video.domain.services.template_resolver import TemplateResolver
 
 
 router = APIRouter(prefix="/trends", tags=["trends"])
@@ -51,7 +51,11 @@ async def process_trends(
     engine: ScriptEngine = Depends(get_script_engine),
 ) -> dict[str, Any]:
     resolver = TemplateResolver()
-    unprocessed = await trend_repo.get_unprocessed_trends(limit=limit)
+    unprocessed = (
+        await trend_repo.get_trends_for_regeneration(limit=limit)
+        if force_regenerate
+        else await trend_repo.get_unprocessed_trends(limit=limit)
+    )
     templates = await template_repo.get_active_template_definitions()
 
     processed = 0
@@ -61,15 +65,9 @@ async def process_trends(
 
     for trend in unprocessed:
         processed += 1
-        if not force_regenerate and await script_repo.exists_for_trend(trend.id):
-            skipped_existing += 1
-            continue
-
-        # domain NormalizedTrend построим из ORM raw_payload_json
         raw = dict(trend.raw_payload_json or {})
         raw.setdefault("source", trend.source)
         raw.setdefault("external_id", trend.external_id)
-        from trend2video.domain.services.trend_normalizer import TrendNormalizer
 
         norm = TrendNormalizer().normalize(raw)
 
@@ -88,13 +86,17 @@ async def process_trends(
             if tmpl_orm is None:
                 continue
 
-            await script_repo.create_script(trend, tmpl_orm, gen)
+            if force_regenerate:
+                await script_repo.replace_script(trend, tmpl_orm, gen)
+            else:
+                if await script_repo.exists_for_trend(trend.id):
+                    skipped_existing += 1
+                    continue
+                await script_repo.create_script(trend, tmpl_orm, gen)
+            await trend_repo.mark_status(trend.id, TrendStatus.SCRIPT_GENERATED)
             with_script += 1
         except Exception:
             failed += 1
-            # статус failed выставим явно
-            from trend2video.domain.entities.trend import TrendStatus
-
             await trend_repo.mark_status(trend.id, TrendStatus.FAILED)
 
     return {
@@ -125,4 +127,3 @@ async def list_trends(
         }
         for t in trends
     ]
-

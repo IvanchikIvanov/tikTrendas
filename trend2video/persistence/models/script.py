@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from trend2video.persistence.models.base import Base
@@ -15,25 +14,32 @@ class ScriptORM(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    trend_id: Mapped[int] = mapped_column(Integer, ForeignKey("trends.id", ondelete="CASCADE"), nullable=False)
+    content_candidate_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("content_candidates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    keyword_trend_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("keyword_trends.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     template_id: Mapped[str] = mapped_column(String(255), ForeignKey("templates.id", ondelete="RESTRICT"), nullable=False)
 
-    script_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    script_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'created'"))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("now()"),
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("now()"),
-        server_onupdate=text("now()"),
+        server_default=text("CURRENT_TIMESTAMP"),
     )
 
     __table_args__ = (
-        UniqueConstraint("trend_id", name="uq_scripts_trend_id"),
+        UniqueConstraint("content_candidate_id", name="uq_scripts_content_candidate_id"),
     )
-

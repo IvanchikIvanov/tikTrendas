@@ -32,7 +32,11 @@ async def run_process_job(limit: int = 20, force_regenerate: bool = False) -> di
         engine = ScriptEngine(FakeLLMClient(brand_ctx))
         normalizer = TrendNormalizer()
 
-        unprocessed = await trend_repo.get_unprocessed_trends(limit=limit)
+        unprocessed = (
+            await trend_repo.get_trends_for_regeneration(limit=limit)
+            if force_regenerate
+            else await trend_repo.get_unprocessed_trends(limit=limit)
+        )
         templates = await template_repo.get_active_template_definitions()
 
         processed = 0
@@ -42,10 +46,6 @@ async def run_process_job(limit: int = 20, force_regenerate: bool = False) -> di
 
         for trend in unprocessed:
             processed += 1
-            if not force_regenerate and await script_repo.exists_for_trend(trend.id):
-                skipped_existing += 1
-                continue
-
             raw = dict(trend.raw_payload_json or {})
             raw.setdefault("source", trend.source)
             raw.setdefault("external_id", trend.external_id)
@@ -64,7 +64,13 @@ async def run_process_job(limit: int = 20, force_regenerate: bool = False) -> di
                 if tmpl_orm is None:
                     continue
 
-                await script_repo.create_script(trend, tmpl_orm, gen)
+                if force_regenerate:
+                    await script_repo.replace_script(trend, tmpl_orm, gen)
+                else:
+                    if await script_repo.exists_for_trend(trend.id):
+                        skipped_existing += 1
+                        continue
+                    await script_repo.create_script(trend, tmpl_orm, gen)
                 await trend_repo.mark_status(trend.id, TrendStatus.SCRIPT_GENERATED)
                 with_script += 1
             except Exception:
@@ -83,4 +89,3 @@ async def run_process_job(limit: int = 20, force_regenerate: bool = False) -> di
 
 if __name__ == "__main__":
     asyncio.run(run_process_job())
-

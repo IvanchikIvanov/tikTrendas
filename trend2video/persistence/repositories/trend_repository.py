@@ -7,6 +7,7 @@ from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trend2video.domain.entities.trend import NormalizedTrend, TrendStatus
+from trend2video.persistence.models.script import ScriptORM
 from trend2video.persistence.models.trend import TrendORM
 
 
@@ -60,9 +61,33 @@ class TrendRepository:
         return result, summary
 
     async def get_unprocessed_trends(self, limit: int = 20) -> list[TrendORM]:
+        script_exists = (
+            select(ScriptORM.id)
+            .where(ScriptORM.trend_id == TrendORM.id)
+            .exists()
+        )
         stmt: Select[tuple[TrendORM]] = (
             select(TrendORM)
             .where(TrendORM.status.in_([TrendStatus.DISCOVERED, TrendStatus.SCORED]))
+            .where(~script_exists)
+            .order_by(TrendORM.discovered_at.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return list(rows)
+
+    async def get_trends_for_regeneration(self, limit: int = 20) -> list[TrendORM]:
+        stmt: Select[tuple[TrendORM]] = (
+            select(TrendORM)
+            .where(
+                TrendORM.status.in_(
+                    [
+                        TrendStatus.DISCOVERED,
+                        TrendStatus.SCORED,
+                        TrendStatus.SCRIPT_GENERATED,
+                    ]
+                )
+            )
             .order_by(TrendORM.discovered_at.desc())
             .limit(limit)
         )
@@ -106,4 +131,3 @@ class TrendRepository:
         )
         row = (await self._session.execute(stmt)).scalars().first()
         return row
-

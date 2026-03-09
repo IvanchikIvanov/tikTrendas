@@ -17,15 +17,15 @@ async def list_scripts(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[dict[str, Any]]:
-    scripts = await script_repo.list_scripts(limit=limit, offset=offset)
+    scripts = await script_repo.list_all(limit=limit, offset=offset)
     return [
         {
-            "id": s.id,
-            "trend_id": s.trend_id,
-            "template_id": s.template_id,
-            "status": s.status,
-            "created_at": s.created_at,
+            "id": script.id,
+            "content_candidate_id": script.content_candidate_id,
+            "keyword_trend_id": script.keyword_trend_id,
+            "template_id": script.template_id,
+            "status": script.status,
+            "created_at": script.created_at,
         }
-        for s in scripts
+        for script in scripts
     ]
-

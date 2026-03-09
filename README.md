@@ -1,118 +1,195 @@
-## trend2video Sprint 1
+# trend2video Trend Discovery Foundation v2
 
-Backend-модуль для автогенерации TikTok-скриптов по трендам (Sprint 1): intake трендов, scoring, выбор шаблона, генерация структурированного скрипта и сохранение в БД.
+Backend for trend discovery and script generation built around the pipeline:
 
-### Что делает Sprint 1
+`TrendSearchJob -> KeywordTrend -> RelatedVideo -> ContentCandidate -> Script`
 
-- **Trend intake**: получение трендов из TikTok Creative Center (Playwright) и/или из локального JSON (`StaticJsonTrendSource`).
-- **Scoring**: расчёт score тренда с учётом brand context и доступных шаблонов.
-- **Template resolver**: выбор лучшего шаблона под конкретный тренд.
-- **Script engine**: генерация строго типизированного `GeneratedScript` через абстракцию LLM (в Sprint 1 — `FakeLLMClient`).
-- **Persistence**: сохранение трендов, шаблонов и скриптов в PostgreSQL.
-- **API + worker**: FastAPI-приложение и воркеры для ingest/process.
+The old flat `Trend -> Script` Sprint 1 flow is no longer the core architecture. FastAPI, worker jobs, repositories, config, DB wiring, template resolver, and fake LLM remain, but the domain model now reflects the real TikTok Creative Center discovery workflow.
 
-### Структура проекта (основное)
+## Core concepts
 
-- `trend2video/core/` — конфиг (`AppSettings` + `BrandContext`), подключение к БД, логирование.
-- `trend2video/domain/entities/` — `NormalizedTrend`, `TemplateDefinition`, `GeneratedScript`, `BrandContext`, статусы тренда.
-- `trend2video/domain/services/` — `TrendNormalizer`, `TrendScorer`, `TemplateResolver`, `ScriptEngine`.
-- `trend2video/integrations/tiktok/` — `TrendSource` Protocol, `CreativeCenterTrendSource`, `StaticJsonTrendSource`.
-- `trend2video/integrations/llm/` — `LLMClient`, `FakeLLMClient`, `prompt_builder`.
-- `trend2video/persistence/models/` — ORM-модели `TrendORM`, `TemplateORM`, `ScriptORM`.
-- `trend2video/persistence/repositories/` — репозитории трендов, шаблонов и скриптов.
-- `trend2video/apps/api/` — FastAPI-приложение (`main.py`, deps, роуты `/health`, `/trends`, `/scripts`).
-- `trend2video/apps/worker/` — jobs `ingest_trends.py`, `process_trends.py`.
-- `trend2video/scripts/seed_templates.py` — сидирование трёх базовых шаблонов.
-- `alembic/` — конфигурация и миграции (инициальная схема `trends/templates/scripts`).
-- `tests/` — unit и integration-ish тесты.
+- `TrendSearchJob`: configurable search specification with countries, time window, limits, source types, language, product tags, and mode.
+- `KeywordTrend`: keyword-level signal collected from Keyword Insights.
+- `RelatedVideo`: reference videos linked to a keyword trend.
+- `ContentCandidate`: internal content opportunity built from keyword + video evidence + brand context.
+- `GeneratedScript`: downstream script generated from a content candidate, not directly from a flat trend row.
 
-### Как поднять проект локально
+## Sources
 
-1. **Установить зависимости**
+- `StaticKeywordInsightsSource`: official dev/test fallback. Reads local JSON and supports keyword trends plus related videos.
+- `TikTokKeywordInsightsSource`: live adapter skeleton for TikTok Keyword Insights. Interface is production-shaped, but the live implementation is intentionally conservative and still marked with TODOs where scraping is unstable.
+
+## Project structure
+
+```text
+trend2video/
+  apps/
+    api/
+      deps.py
+      main.py
+      routes/
+        health.py
+        search_jobs.py
+        keyword_trends.py
+        related_videos.py
+        candidates.py
+        scripts.py
+    worker/
+      jobs/
+        collect_keyword_trends.py
+        collect_related_videos.py
+        build_content_candidates.py
+        generate_scripts.py
+  core/
+    config.py
+    db.py
+    logging.py
+  domain/
+    entities/
+    services/
+  integrations/
+    llm/
+    tiktok/
+  persistence/
+    models/
+    repositories/
+  data/
+    static_keyword_insights.json
+  tests/
+    unit/
+    integration/
+```
+
+## Key configuration
+
+Main env vars:
+
+- `T2V_DATABASE_URL`
+- `T2V_DEFAULT_KEYWORD_SOURCE_TYPE` = `static` or `tiktok_keyword_insights`
+- `T2V_STATIC_KEYWORD_INSIGHTS_PATH`
+- `T2V_DEFAULT_TOP_KEYWORDS_LIMIT`
+- `T2V_DEFAULT_RELATED_VIDEOS_PER_KEYWORD`
+- `T2V_TIKTOK_COOKIE_HEADER`
+- `T2V_TIKTOK_USER_AGENT`
+- `T2V_TIKTOK_STORAGE_STATE_PATH`
+- `T2V_MEDIA_STORAGE_BASE_PATH`
+
+## Local setup
+
+1. Install dependencies.
 
 ```bash
 poetry install
 ```
-# Explanation: Устанавливает все зависимости проекта через poetry.
 
-2. **Настроить переменные окружения**
-
-Минимум:
-
-- `T2V_DATABASE_URL` (если отличается от значения по умолчанию в `core/config.py`),
-- `T2V_TREND_SOURCE` (`static` или `creative_center`),
-- `T2V_STATIC_TRENDS_PATH` (путь к JSON с трендами для статического источника).
-
-3. **Накатить миграции**
+2. Apply migrations or create schema in your target DB.
 
 ```bash
 poetry run alembic upgrade head
 ```
-# Explanation: Применяет Alembic-миграции и создаёт таблицы в БД.
 
-4. **Сидировать шаблоны**
+3. Seed templates.
 
 ```bash
 poetry run python -m trend2video.scripts.seed_templates
 ```
-# Explanation: Создаёт/обновляет 3 базовых шаблона в таблице templates.
 
-5. **Запустить API**
+4. Run the API.
 
 ```bash
 poetry run uvicorn trend2video.apps.api.main:app --reload
 ```
-# Explanation: Поднимает FastAPI-приложение с маршрутами /health, /trends и /scripts.
 
-6. **Запустить worker jobs вручную (опционально)**
+## Worker commands
 
-```bash
-poetry run python -m trend2video.apps.worker.jobs.ingest_trends
-poetry run python -m trend2video.apps.worker.jobs.process_trends
-```
-# Explanation: Первый джоб делает ingest трендов, второй — обрабатывает тренды до скриптов.
-
-### Примеры API-запросов
-
-1. **Health-check**
+Collect keyword trends:
 
 ```bash
-curl http://localhost:8000/health
+poetry run python -m trend2video.apps.worker.jobs.collect_keyword_trends
 ```
-# Explanation: Проверка, что API живо и отвечает.
 
-2. **Ingest трендов**
+Collect related videos:
 
 ```bash
-curl -X POST http://localhost:8000/trends/ingest
+poetry run python -m trend2video.apps.worker.jobs.collect_related_videos
 ```
-# Explanation: Запускает intake трендов из выбранного источника и сохраняет их в БД.
 
-3. **Process трендов**
+Build content candidates:
 
 ```bash
-curl -X POST "http://localhost:8000/trends/process?limit=20&force_regenerate=false"
+poetry run python -m trend2video.apps.worker.jobs.build_content_candidates
 ```
-# Explanation: Берёт необработанные тренды, считает score, выбирает шаблон, генерирует скрипты.
 
-4. **Список трендов**
+Generate scripts:
 
 ```bash
-curl "http://localhost:8000/trends?limit=50"
+poetry run python -m trend2video.apps.worker.jobs.generate_scripts
 ```
-# Explanation: Возвращает список трендов с их score и статусом.
 
-5. **Список скриптов**
+## API flow
+
+Create a search job:
 
 ```bash
-curl "http://localhost:8000/scripts?limit=50"
+curl -X POST http://localhost:8000/search-jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "BY_7d_top10_ecom",
+    "countries": ["Belarus"],
+    "time_window": "7d",
+    "top_keywords_limit": 10,
+    "related_videos_per_keyword": 3,
+    "source_types": ["static"],
+    "min_popularity_change": 20,
+    "language": "ru",
+    "product_tags": ["ecommerce", "delivery", "promo"],
+    "mode": "new_and_growing",
+    "is_active": true
+  }'
 ```
-# Explanation: Возвращает список сгенерированных скриптов и базовую информацию по ним.
 
-### Что будет во Sprint 2
+Run the discovery stages:
 
-- Добавление renderer-а для реального видео.
-- Workflow ревью через Telegram/другие каналы.
-- Паблишеры для TikTok / Instagram / YouTube.
-- Расширение pipeline, метрики перформанса шаблонов и перегенерация.
+```bash
+curl -X POST http://localhost:8000/search-jobs/1/run-keywords
+curl -X POST http://localhost:8000/search-jobs/1/run-related-videos
+curl -X POST http://localhost:8000/search-jobs/1/build-candidates
+curl -X POST http://localhost:8000/search-jobs/1/generate-scripts
+```
 
+Inspect outputs:
+
+```bash
+curl "http://localhost:8000/keyword-trends?job_id=1"
+curl "http://localhost:8000/related-videos?job_id=1"
+curl "http://localhost:8000/candidates?job_id=1"
+curl "http://localhost:8000/scripts"
+```
+
+Generate a script for one candidate explicitly:
+
+```bash
+curl -X POST http://localhost:8000/candidates/1/generate-script
+```
+
+## Testing
+
+The repository ships with a static keyword insights dataset and SQLite-backed unit/integration tests for the v2 flow.
+
+```bash
+PYTHONPATH=. pytest tests/unit tests/integration -q
+```
+
+## Current limitations
+
+- Live TikTok Keyword Insights scraping is still unstable and intentionally not presented as production-ready.
+- Media download/storage is not implemented yet, but the `RelatedVideo.storage_path` and `media_storage_base_path` hooks are in place.
+- The legacy `trends` table and old Sprint 1 files may still exist for migration continuity, but the v2 architecture does not depend on them.
+
+## Sprint 2 direction
+
+- Video download and asset storage
+- Vector similarity and candidate ranking improvements
+- Rendering
+- Review workflow
+- Publishing pipeline

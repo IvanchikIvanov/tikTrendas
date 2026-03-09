@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from trend2video.core.config import get_settings
 
@@ -22,7 +23,11 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(settings.database_url, future=True)
+        _engine = create_async_engine(
+            settings.database_url,
+            future=True,
+            poolclass=NullPool,
+        )
     return _engine
 
 
@@ -46,3 +51,8 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with session_factory() as session:
         yield session
 
+
+def reset_db_state() -> None:
+    global _engine, _session_factory
+    _engine = None
+    _session_factory = None

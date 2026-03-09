@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, Integer, String, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, Enum, Float, Integer, JSON, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from trend2video.domain.entities.trend import TrendStatus
@@ -28,12 +27,17 @@ class TrendORM(Base):
     heat: Mapped[float | None] = mapped_column(Float, nullable=True)
     velocity: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    tags_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    raw_payload_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    tags_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+    raw_payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[TrendStatus] = mapped_column(
-        Enum(TrendStatus, name="trend_status"),
+        Enum(
+            TrendStatus,
+            name="trend_status",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+            validate_strings=True,
+        ),
         nullable=False,
         server_default=TrendStatus.DISCOVERED.value,
     )
@@ -42,16 +46,14 @@ class TrendORM(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("now()"),
+        server_default=text("CURRENT_TIMESTAMP"),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("now()"),
-        server_onupdate=text("now()"),
+        server_default=text("CURRENT_TIMESTAMP"),
     )
 
     __table_args__ = (
         UniqueConstraint("source", "external_id", name="uq_trends_source_external_id"),
     )
-

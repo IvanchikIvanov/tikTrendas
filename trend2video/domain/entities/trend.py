@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
+from enum import Enum
 
 from pydantic import BaseModel, Field
 
 
-class TrendStatus(StrEnum):
+class TrendStatus(str, Enum):
     """Жизненный цикл тренда внутри системы."""
 
     DISCOVERED = "discovered"
@@ -32,4 +32,3 @@ class NormalizedTrend(BaseModel):
     tags: list[str] = Field(default_factory=list)
     raw_payload: dict = Field(default_factory=dict)
     discovered_at: datetime
-

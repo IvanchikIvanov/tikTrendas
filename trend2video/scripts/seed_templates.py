@@ -53,7 +53,7 @@ TEMPLATES: list[TemplateDefinition] = [
             "style": "short_lines",
             "max_chars_per_line": 28,
         },
-        tags=["direct_response", "demo", "pain_solution"],
+        tags=["direct_response", "demo", "pain_solution", "offer_hook"],
         active=True,
     ),
     TemplateDefinition(
@@ -140,7 +140,7 @@ TEMPLATES: list[TemplateDefinition] = [
             ),
         ],
         caption_policy={},
-        tags=["before_after", "demo"],
+        tags=["before_after", "demo", "offer_hook"],
         active=True,
     ),
 ]
@@ -172,4 +172,3 @@ async def seed() -> None:
 
 if __name__ == "__main__":
     asyncio.run(seed())
-

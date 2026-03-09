@@ -1,0 +1,82 @@
+{
+  "keywords": [
+    {
+      "keyword": "free delivery promo",
+      "country": "Belarus",
+      "time_window": "7d",
+      "rank": 1,
+      "popularity": 477,
+      "popularity_change": 82.19,
+      "ctr": 1.2,
+      "keyword_type": "commercial",
+      "industry": "ecommerce",
+      "objective": "conversions",
+      "details_url": "https://example.com/keywords/free-delivery-promo",
+      "raw_payload_json": {
+        "source": "static"
+      },
+      "related_videos": [
+        {
+          "source_platform": "tiktok",
+          "source_url": "https://www.tiktok.com/@demo/video/1",
+          "creator_name": "creator_one",
+          "thumbnail_url": "https://img.example.com/1.jpg",
+          "overlay_text": "free delivery this week",
+          "transcript": "offer free delivery for all first orders",
+          "duration_sec": 14.2,
+          "visual_tags_json": ["ugc", "text_overlay"],
+          "topic_tags_json": ["ecommerce", "promo"],
+          "metadata_json": {
+            "likes": 12000
+          }
+        },
+        {
+          "source_platform": "tiktok",
+          "source_url": "https://www.tiktok.com/@demo/video/2",
+          "creator_name": "creator_two",
+          "thumbnail_url": "https://img.example.com/2.jpg",
+          "overlay_text": "sale and same day delivery",
+          "transcript": "same day delivery makes checkout convert",
+          "duration_sec": 12.6,
+          "visual_tags_json": ["product_showcase"],
+          "topic_tags_json": ["delivery", "sales"],
+          "metadata_json": {
+            "likes": 8000
+          }
+        }
+      ]
+    },
+    {
+      "keyword": "how to automate lead follow up",
+      "country": "Belarus",
+      "time_window": "7d",
+      "rank": 2,
+      "popularity": 320,
+      "popularity_change": 44.8,
+      "ctr": 0.9,
+      "keyword_type": "product",
+      "industry": "sales automation",
+      "objective": "education",
+      "details_url": "https://example.com/keywords/lead-follow-up",
+      "raw_payload_json": {
+        "source": "static"
+      },
+      "related_videos": [
+        {
+          "source_platform": "tiktok",
+          "source_url": "https://www.tiktok.com/@demo/video/3",
+          "creator_name": "creator_three",
+          "thumbnail_url": "https://img.example.com/3.jpg",
+          "overlay_text": "how to reply in 5 minutes",
+          "transcript": "automation helps teams respond faster",
+          "duration_sec": 18.0,
+          "visual_tags_json": ["screenrec"],
+          "topic_tags_json": ["automation", "leadgen"],
+          "metadata_json": {
+            "likes": 5400
+          }
+        }
+      ]
+    }
+  ]
+}
