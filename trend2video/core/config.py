@@ -31,6 +31,9 @@ class AppSettings(BaseSettings):
     tiktok_region: str = "US"
     tiktok_cookie_header: str | None = None
     tiktok_user_agent: str | None = None
+    tiktok_referer: str | None = None
+    tiktok_accept_language: str | None = None
+    tiktok_extra_headers_json: str | None = None
     tiktok_storage_state_path: str | None = None
     media_storage_base_path: str = "data/media"
 

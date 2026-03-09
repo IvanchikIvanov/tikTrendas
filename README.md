@@ -17,7 +17,8 @@ The old flat `Trend -> Script` Sprint 1 flow is no longer the core architecture.
 ## Sources
 
 - `StaticKeywordInsightsSource`: official dev/test fallback. Reads local JSON and supports keyword trends plus related videos.
-- `TikTokKeywordInsightsSource`: live adapter skeleton for TikTok Keyword Insights. Interface is production-shaped, but the live implementation is intentionally conservative and still marked with TODOs where scraping is unstable.
+- `TikTokKeywordInsightsSource`: preferred live keyword ingestion path. Uses the observed TikTok Creative Center JSON endpoint at `https://ads.tiktok.com/creative_radar_api/v1/script/keyword/list` via `httpx.AsyncClient`.
+- `CreativeCenterTrendSource`: older Playwright DOM source for the legacy trend feed. It still exists in the repo, but it is experimental and is not the preferred keyword insights path.
 
 ## Project structure
 
@@ -62,17 +63,49 @@ trend2video/
 
 ## Key configuration
 
-Main env vars:
+Use [`.env.example`](/root/Trendas/tikTrendas/.env.example) as the recommended local template:
 
+```bash
+cp .env.example .env
+```
+
+Main env vars from `trend2video/core/config.py`:
+
+- `T2V_ENV`
 - `T2V_DATABASE_URL`
+- `T2V_TREND_SOURCE` = `static` or `creative_center`
+- `T2V_STATIC_TRENDS_PATH`
 - `T2V_DEFAULT_KEYWORD_SOURCE_TYPE` = `static` or `tiktok_keyword_insights`
 - `T2V_STATIC_KEYWORD_INSIGHTS_PATH`
 - `T2V_DEFAULT_TOP_KEYWORDS_LIMIT`
 - `T2V_DEFAULT_RELATED_VIDEOS_PER_KEYWORD`
+- `T2V_TIKTOK_CREATIVE_CENTER_URL`
+- `T2V_TIKTOK_REGION`
 - `T2V_TIKTOK_COOKIE_HEADER`
 - `T2V_TIKTOK_USER_AGENT`
+- `T2V_TIKTOK_REFERER`
+- `T2V_TIKTOK_ACCEPT_LANGUAGE`
+- `T2V_TIKTOK_EXTRA_HEADERS_JSON`
 - `T2V_TIKTOK_STORAGE_STATE_PATH`
 - `T2V_MEDIA_STORAGE_BASE_PATH`
+- `T2V_BRAND_CONTEXT` as a JSON object if you want to override the built-in default brand profile
+
+For live keyword ingestion, `T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_keyword_insights` or `source_types=["tiktok_keyword_insights"]` selects the HTTP adapter. Static JSON remains the official fallback for local development and tests.
+
+Example live config:
+
+```bash
+cp .env.example .env
+# then edit .env and set:
+T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_keyword_insights
+T2V_TIKTOK_COOKIE_HEADER='sessionid_ads=example_session_cookie; msToken=example_ms_token'
+T2V_TIKTOK_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
+T2V_TIKTOK_REFERER='https://ads.tiktok.com/business/creativecenter/keyword-insights/pc/en'
+T2V_TIKTOK_ACCEPT_LANGUAGE='en-US,en;q=0.9'
+T2V_TIKTOK_EXTRA_HEADERS_JSON='{"x-csrftoken":"example_csrf_token"}'
+```
+
+Cookies and session-bound headers expire. When the live source starts returning non-zero response codes or empty data, refresh the browser session values instead of hardcoding them into the repository.
 
 ## Local setup
 
@@ -82,19 +115,25 @@ Main env vars:
 poetry install
 ```
 
-2. Apply migrations or create schema in your target DB.
+2. Create a local env file from the template and adjust values as needed.
+
+```bash
+cp .env.example .env
+```
+
+3. Apply migrations or create schema in your target DB.
 
 ```bash
 poetry run alembic upgrade head
 ```
 
-3. Seed templates.
+4. Seed templates.
 
 ```bash
 poetry run python -m trend2video.scripts.seed_templates
 ```
 
-4. Run the API.
+5. Run the API.
 
 ```bash
 poetry run uvicorn trend2video.apps.api.main:app --reload
@@ -106,6 +145,12 @@ Collect keyword trends:
 
 ```bash
 poetry run python -m trend2video.apps.worker.jobs.collect_keyword_trends
+```
+
+Run just the live source tests:
+
+```bash
+PYTHONPATH=. pytest tests/unit/test_tiktok_keyword_http_source.py -q
 ```
 
 Collect related videos:
@@ -182,7 +227,8 @@ PYTHONPATH=. pytest tests/unit tests/integration -q
 
 ## Current limitations
 
-- Live TikTok Keyword Insights scraping is still unstable and intentionally not presented as production-ready.
+- The live keyword source depends on TikTok session headers. Cookie and CSRF-style values are not durable and must be refreshed manually.
+- `video_list` currently provides the first live evidence for `RelatedVideo`, but only TikTok video IDs are available from this endpoint. The adapter maps them into deterministic video URLs and preserves the raw IDs in `metadata_json`.
 - Media download/storage is not implemented yet, but the `RelatedVideo.storage_path` and `media_storage_base_path` hooks are in place.
 - The legacy `trends` table and old Sprint 1 files may still exist for migration continuity, but the v2 architecture does not depend on them.
 

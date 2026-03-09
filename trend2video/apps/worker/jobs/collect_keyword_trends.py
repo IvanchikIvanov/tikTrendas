@@ -14,7 +14,8 @@ from trend2video.persistence.repositories.search_job_repository import SearchJob
 
 def _build_source(job: TrendSearchJob) -> KeywordInsightsSource:
     settings = get_settings()
-    if "tiktok_keyword_insights" in job.source_types:
+    source_types = job.source_types or [settings.default_keyword_source_type]
+    if "tiktok_keyword_insights" in source_types:
         return TikTokKeywordInsightsSource()
     return StaticKeywordInsightsSource(path=settings.static_keyword_insights_path)
 
