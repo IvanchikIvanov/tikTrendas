@@ -2,7 +2,19 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from trend2video.apps.api.routes import candidates, health, keyword_trends, related_videos, scripts, search_jobs
+from trend2video.apps.api.routes import (
+    assets,
+    candidates,
+    health,
+    keyword_trends,
+    manual_trends,
+    publish_jobs,
+    related_videos,
+    renders,
+    review_requests,
+    scripts,
+    search_jobs,
+)
 from trend2video.core.logging import setup_logging
 
 
@@ -15,6 +27,11 @@ def create_app() -> FastAPI:
     app.include_router(related_videos.router)
     app.include_router(candidates.router)
     app.include_router(scripts.router)
+    app.include_router(manual_trends.router)
+    app.include_router(assets.router)
+    app.include_router(renders.router)
+    app.include_router(review_requests.router)
+    app.include_router(publish_jobs.router)
     return app
 
 

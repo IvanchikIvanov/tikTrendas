@@ -36,3 +36,20 @@ async def test_search_job_crud_flow() -> None:
         list_response = await client.get("/search-jobs")
         assert list_response.status_code == 200
         assert len(list_response.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_search_job_create_rejects_unknown_source_type() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        create_response = await client.post(
+            "/search-jobs",
+            json={
+                "name": "bad_source_job",
+                "countries": ["Belarus"],
+                "time_window": "7d",
+                "source_types": ["tiktok_keyword_insights"],
+            },
+        )
+
+        assert create_response.status_code == 422

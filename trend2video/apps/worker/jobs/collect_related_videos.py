@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 
-from trend2video.apps.worker.jobs.collect_keyword_trends import _build_source
 from trend2video.core.db import get_session_factory
+from trend2video.integrations.tiktok.keyword_source_registry import build_keyword_insights_source_for_job
 from trend2video.persistence.repositories.keyword_trend_repository import KeywordTrendRepository
 from trend2video.persistence.repositories.related_video_repository import RelatedVideoRepository
 from trend2video.persistence.repositories.search_job_repository import SearchJobRepository
@@ -21,7 +21,7 @@ async def run_collect_related_videos(job_id: int | None = None) -> dict[str, int
         for job in jobs:
             if job is None:
                 continue
-            source = _build_source(job)
+            source = build_keyword_insights_source_for_job(job.source_types)
             keywords = await keyword_repo.get_without_related_videos(job.id)
             for keyword in keywords:
                 videos = await source.collect_related_videos(job, keyword)

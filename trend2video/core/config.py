@@ -21,7 +21,7 @@ class AppSettings(BaseSettings):
     # Источники трендов
     trend_source: Literal["creative_center", "static"] = "static"
     static_trends_path: str = "data/static_trends.json"
-    default_keyword_source_type: Literal["static", "tiktok_keyword_insights"] = "static"
+    default_keyword_source_type: Literal["static", "tiktok_http"] = "static"
     static_keyword_insights_path: str = "data/static_keyword_insights.json"
     default_related_videos_per_keyword: int = 3
     default_top_keywords_limit: int = 10

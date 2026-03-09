@@ -2,22 +2,10 @@ from __future__ import annotations
 
 import asyncio
 
-from trend2video.core.config import get_settings
 from trend2video.core.db import get_session_factory
-from trend2video.domain.entities.search_job import TrendSearchJob
-from trend2video.integrations.tiktok.keyword_insights_source_base import KeywordInsightsSource
-from trend2video.integrations.tiktok.keyword_insights_source_static import StaticKeywordInsightsSource
-from trend2video.integrations.tiktok.keyword_insights_source_tiktok import TikTokKeywordInsightsSource
+from trend2video.integrations.tiktok.keyword_source_registry import build_keyword_insights_source_for_job
 from trend2video.persistence.repositories.keyword_trend_repository import KeywordTrendRepository
 from trend2video.persistence.repositories.search_job_repository import SearchJobRepository
-
-
-def _build_source(job: TrendSearchJob) -> KeywordInsightsSource:
-    settings = get_settings()
-    source_types = job.source_types or [settings.default_keyword_source_type]
-    if "tiktok_keyword_insights" in source_types:
-        return TikTokKeywordInsightsSource()
-    return StaticKeywordInsightsSource(path=settings.static_keyword_insights_path)
 
 
 async def run_collect_keyword_trends(job_id: int | None = None) -> dict[str, int]:
@@ -31,7 +19,7 @@ async def run_collect_keyword_trends(job_id: int | None = None) -> dict[str, int
         for job in jobs:
             if job is None:
                 continue
-            source = _build_source(job)
+            source = build_keyword_insights_source_for_job(job.source_types)
             keywords = await source.collect_keyword_trends(job)
             persisted = await keyword_repo.bulk_upsert(keywords)
             inserted += len(persisted)

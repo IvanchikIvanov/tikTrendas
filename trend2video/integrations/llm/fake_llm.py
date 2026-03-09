@@ -22,14 +22,17 @@ class FakeLLMClient(LLMClient):
     async def generate_from_context(
         self,
         candidate: ContentCandidate,
-        keyword_trend: KeywordTrend,
+        keyword_trend: KeywordTrend | None,
         related_videos: list[RelatedVideo],
         template: TemplateDefinition,
         brand_ctx: BrandContext,
         schema: Type[BaseModel],
     ) -> dict:
+        candidate_meta = candidate.metadata_json or {}
+        manual_context = candidate_meta.get("manual_trend", {})
+        keyword_text = keyword_trend.keyword if keyword_trend is not None else (manual_context.get("title") or candidate.candidate_type)
         hashtags = []
-        for tag in keyword_trend.keyword.lower().split():
+        for tag in keyword_text.lower().split():
             if tag and not tag.startswith("#"):
                 hashtags.append(f"#{tag}")
         for niche in brand_ctx.niche_tags:
@@ -37,11 +40,18 @@ class FakeLLMClient(LLMClient):
             if hashtag not in hashtags:
                 hashtags.append(hashtag)
 
-        overlay = next((video.overlay_text for video in related_videos if video.overlay_text), keyword_trend.keyword)
-        hook = template.hooks[0] if template.hooks else f"{keyword_trend.keyword} breakdown"
+        overlay = next(
+            (
+                video.overlay_text
+                for video in related_videos
+                if video.overlay_text
+            ),
+            next(iter(manual_context.get("reference_hook_texts", [])), keyword_text),
+        )
+        hook = template.hooks[0] if template.hooks else f"{keyword_text} breakdown"
         data = {
-            "content_candidate_id": str(candidate.id or candidate.keyword_trend_id),
-            "keyword_trend_id": str(keyword_trend.id) if keyword_trend.id is not None else None,
+            "content_candidate_id": str(candidate.id or candidate.keyword_trend_id or candidate.manual_trend_input_id or 0),
+            "keyword_trend_id": str(keyword_trend.id) if keyword_trend is not None and keyword_trend.id is not None else None,
             "template_id": template.id,
             "hook_text": f"{hook}: {overlay}",
             "pain_text": brand_ctx.pain_points[0] if brand_ctx.pain_points else None,
@@ -49,12 +59,13 @@ class FakeLLMClient(LLMClient):
             "outcome_text": "Faster output and clearer hooks",
             "cta_text": "Comment DEMO for the workflow",
             "caption": (
-                f"{brand_ctx.product_name}: build a video around '{keyword_trend.keyword}' "
+                f"{brand_ctx.product_name}: build a video around '{keyword_text}' "
                 f"using angle '{candidate.recommended_angle or candidate.candidate_type}'."
             ),
             "hashtags": hashtags[:10],
             "metadata": {
                 "candidate_type": candidate.candidate_type,
+                "source_type": candidate.source_type,
                 "related_videos_count": len(related_videos),
                 "tone": brand_ctx.tone,
             },

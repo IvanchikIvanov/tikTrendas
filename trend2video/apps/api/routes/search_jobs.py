@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from trend2video.apps.api.deps import get_search_job_repository
 from trend2video.apps.worker.jobs.build_content_candidates import run_build_content_candidates
@@ -11,6 +11,7 @@ from trend2video.apps.worker.jobs.collect_keyword_trends import run_collect_keyw
 from trend2video.apps.worker.jobs.collect_related_videos import run_collect_related_videos
 from trend2video.apps.worker.jobs.generate_scripts import run_generate_scripts
 from trend2video.domain.entities.search_job import SearchJobMode, TrendSearchJob
+from trend2video.integrations.tiktok.keyword_source_types import normalize_source_types
 from trend2video.persistence.repositories.search_job_repository import SearchJobRepository
 
 
@@ -29,6 +30,13 @@ class SearchJobPatch(BaseModel):
     product_tags: list[str] | None = None
     mode: SearchJobMode | None = None
     is_active: bool | None = None
+
+    @field_validator("source_types")
+    @classmethod
+    def validate_source_types(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        return normalize_source_types(values)
 
 
 @router.post("")

@@ -8,9 +8,15 @@ import pytest_asyncio
 from trend2video.core.config import get_settings
 from trend2video.core.db import get_engine, reset_db_state
 from trend2video.persistence.models import (  # noqa: F401
+    AssetORM,
     ContentCandidateORM,
     KeywordTrendORM,
+    ManualTrendInputORM,
+    ManualTrendReferenceORM,
+    PublishJobORM,
     RelatedVideoORM,
+    RenderJobORM,
+    ReviewRequestORM,
     ScriptORM,
     TemplateORM,
     TrendORM,

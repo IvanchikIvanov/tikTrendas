@@ -18,7 +18,7 @@ class ScriptEngine:
     async def generate(
         self,
         candidate: ContentCandidate,
-        keyword_trend: KeywordTrend,
+        keyword_trend: KeywordTrend | None,
         related_videos: list[RelatedVideo],
         template: TemplateDefinition,
         brand_ctx: BrandContext,

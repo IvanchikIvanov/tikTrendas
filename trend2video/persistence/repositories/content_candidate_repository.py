@@ -18,6 +18,8 @@ class ContentCandidateRepository:
             id=orm.id,
             job_id=orm.job_id,
             keyword_trend_id=orm.keyword_trend_id,
+            manual_trend_input_id=orm.manual_trend_input_id,
+            source_type=orm.source_type,
             candidate_type=orm.candidate_type,
             product_relevance_score=orm.product_relevance_score,
             signal_score=orm.signal_score,
@@ -35,6 +37,8 @@ class ContentCandidateRepository:
             orm = ContentCandidateORM(
                 job_id=candidate.job_id,
                 keyword_trend_id=candidate.keyword_trend_id,
+                manual_trend_input_id=candidate.manual_trend_input_id,
+                source_type=candidate.source_type,
                 candidate_type=candidate.candidate_type,
                 product_relevance_score=candidate.product_relevance_score,
                 signal_score=candidate.signal_score,
@@ -80,3 +84,12 @@ class ContentCandidateRepository:
     async def get_by_id(self, candidate_id: int) -> ContentCandidate | None:
         orm = await self._session.get(ContentCandidateORM, candidate_id)
         return None if orm is None else self._to_entity(orm)
+
+    async def list_for_manual_trend(self, manual_trend_input_id: int) -> Sequence[ContentCandidate]:
+        stmt: Select[tuple[ContentCandidateORM]] = (
+            select(ContentCandidateORM)
+            .where(ContentCandidateORM.manual_trend_input_id == manual_trend_input_id)
+            .order_by(ContentCandidateORM.created_at.desc())
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [self._to_entity(row) for row in rows]

@@ -38,6 +38,10 @@ class ScriptRepository:
         stmt: Select[tuple[ScriptORM]] = select(ScriptORM).where(ScriptORM.content_candidate_id == candidate_id)
         return (await self._session.execute(stmt)).scalars().first()
 
+    async def get_by_id(self, script_id: int) -> ScriptORM | None:
+        stmt: Select[tuple[ScriptORM]] = select(ScriptORM).where(ScriptORM.id == script_id)
+        return (await self._session.execute(stmt)).scalars().first()
+
     async def list_all(self, limit: int = 50, offset: int = 0) -> Sequence[ScriptORM]:
         stmt: Select[tuple[ScriptORM]] = (
             select(ScriptORM)

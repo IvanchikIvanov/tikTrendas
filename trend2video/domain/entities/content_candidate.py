@@ -14,8 +14,10 @@ class ContentCandidateStatus(str, Enum):
 
 class ContentCandidate(BaseModel):
     id: int | None = None
-    job_id: int
-    keyword_trend_id: int
+    job_id: int | None = None
+    keyword_trend_id: int | None = None
+    manual_trend_input_id: int | None = None
+    source_type: str = "keyword_trend"
     candidate_type: str
     product_relevance_score: float
     signal_score: float

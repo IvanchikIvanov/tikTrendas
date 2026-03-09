@@ -18,7 +18,7 @@ from trend2video.integrations.tiktok.keyword_insights_source_base import Keyword
 logger = logging.getLogger(__name__)
 
 KEYWORD_INSIGHTS_API_URL = "https://ads.tiktok.com/creative_radar_api/v1/script/keyword/list"
-KEYWORD_SOURCE_NAME = "tiktok_keyword_insights_http"
+KEYWORD_SOURCE_NAME = "tiktok_http"
 TIME_WINDOW_TO_PERIOD = {
     "1d": 1,
     "7d": 7,

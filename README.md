@@ -77,7 +77,7 @@ Main env vars from `trend2video/core/config.py`:
 - `T2V_DATABASE_URL`
 - `T2V_TREND_SOURCE` = `static` or `creative_center`
 - `T2V_STATIC_TRENDS_PATH`
-- `T2V_DEFAULT_KEYWORD_SOURCE_TYPE` = `static` or `tiktok_keyword_insights`
+- `T2V_DEFAULT_KEYWORD_SOURCE_TYPE` = `static` or `tiktok_http`
 - `T2V_STATIC_KEYWORD_INSIGHTS_PATH`
 - `T2V_DEFAULT_TOP_KEYWORDS_LIMIT`
 - `T2V_DEFAULT_RELATED_VIDEOS_PER_KEYWORD`
@@ -92,14 +92,14 @@ Main env vars from `trend2video/core/config.py`:
 - `T2V_MEDIA_STORAGE_BASE_PATH`
 - `T2V_BRAND_CONTEXT` as a JSON object if you want to override the built-in default brand profile
 
-For live keyword ingestion, `T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_keyword_insights` or `source_types=["tiktok_keyword_insights"]` selects the HTTP adapter. Static JSON remains the official fallback for local development and tests.
+For live keyword ingestion, `T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_http` or `source_types=["tiktok_http"]` selects the HTTP adapter. If `source_types` is omitted on a job, the worker uses `T2V_DEFAULT_KEYWORD_SOURCE_TYPE` and logs that fallback explicitly. Static JSON remains the official fallback for local development and tests.
 
 Example live config:
 
 ```bash
 cp .env.example .env
 # then edit .env and keep shell-sensitive values quoted:
-T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_keyword_insights
+T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_http
 T2V_TIKTOK_COOKIE_HEADER='sessionid_ads=example_session_cookie; msToken=example_ms_token'
 T2V_TIKTOK_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
 T2V_TIKTOK_REFERER='https://ads.tiktok.com/business/creativecenter/keyword-insights/pc/en'

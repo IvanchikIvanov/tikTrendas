@@ -17,6 +17,7 @@ async def test_script_engine_generates_script_from_candidate() -> None:
         id=1,
         job_id=1,
         keyword_trend_id=1,
+        source_type="keyword_trend",
         candidate_type="offer_hook",
         product_relevance_score=0.9,
         signal_score=0.8,

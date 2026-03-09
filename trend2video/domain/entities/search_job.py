@@ -5,6 +5,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
+from trend2video.integrations.tiktok.keyword_source_types import normalize_source_types
+
 
 class SearchJobMode(str, Enum):
     NEW_AND_GROWING = "new_and_growing"
@@ -19,7 +21,7 @@ class TrendSearchJob(BaseModel):
     time_window: str = "7d"
     top_keywords_limit: int = Field(default=10, ge=1, le=100)
     related_videos_per_keyword: int = Field(default=3, ge=0, le=20)
-    source_types: list[str] = Field(default_factory=lambda: ["static"])
+    source_types: list[str] = Field(default_factory=list)
     min_popularity_change: float = 0.0
     language: str | None = None
     product_tags: list[str] = Field(default_factory=list)
@@ -31,7 +33,14 @@ class TrendSearchJob(BaseModel):
     @field_validator("countries", "source_types", "product_tags")
     @classmethod
     def strip_values(cls, values: list[str]) -> list[str]:
+        if values is None:
+            return []
         return [value.strip() for value in values if value and value.strip()]
+
+    @field_validator("source_types")
+    @classmethod
+    def validate_source_types(cls, values: list[str]) -> list[str]:
+        return normalize_source_types(values)
 
     @field_validator("time_window")
     @classmethod

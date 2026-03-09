@@ -75,7 +75,7 @@ def _build_job() -> TrendSearchJob:
         time_window="7d",
         top_keywords_limit=10,
         related_videos_per_keyword=2,
-        source_types=["tiktok_keyword_insights"],
+        source_types=["tiktok_http"],
         min_popularity_change=60.0,
     )
 
