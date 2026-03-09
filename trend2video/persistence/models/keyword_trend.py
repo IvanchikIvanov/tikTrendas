@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, UniqueConstraint, text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, JSON, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from trend2video.persistence.models.base import Base
@@ -34,4 +34,6 @@ class KeywordTrendORM(Base):
 
     __table_args__ = (
         UniqueConstraint("job_id", "country", "time_window", "keyword", name="uq_keyword_trends_job_scope"),
+        Index("ix_keyword_trends_job_id", "job_id"),
+        Index("ix_keyword_trends_job_rank", "job_id", "popularity_change", "rank"),
     )

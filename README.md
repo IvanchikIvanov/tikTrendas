@@ -69,6 +69,8 @@ Use [`.env.example`](/root/Trendas/tikTrendas/.env.example) as the recommended l
 cp .env.example .env
 ```
 
+The template keeps shell-sensitive values quoted so it is safe both for dotenv loading and for `source .env` in `bash`. Keep those quotes in place when editing local values.
+
 Main env vars from `trend2video/core/config.py`:
 
 - `T2V_ENV`
@@ -96,7 +98,7 @@ Example live config:
 
 ```bash
 cp .env.example .env
-# then edit .env and set:
+# then edit .env and keep shell-sensitive values quoted:
 T2V_DEFAULT_KEYWORD_SOURCE_TYPE=tiktok_keyword_insights
 T2V_TIKTOK_COOKIE_HEADER='sessionid_ads=example_session_cookie; msToken=example_ms_token'
 T2V_TIKTOK_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
@@ -126,6 +128,8 @@ cp .env.example .env
 ```bash
 poetry run alembic upgrade head
 ```
+
+That upgrade now includes the v2 trend-discovery schema (`trend_search_jobs`, `keyword_trends`, `related_videos`, `content_candidates`) and migrates `scripts` to `content_candidate_id`.
 
 4. Seed templates.
 

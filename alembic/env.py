@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from trend2video.core.config import get_settings
+from trend2video.persistence import models  # noqa: F401
 from trend2video.persistence.models.base import Base  # type: ignore[attr-defined]
 
 
@@ -56,13 +57,11 @@ async def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section) or {}
     configuration["sqlalchemy.url"] = _get_url()
 
-    connectable = AsyncEngine(
-        engine_from_config(
-            configuration,
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
-            future=True,
-        )
+    connectable = async_engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+        future=True,
     )
 
     async with connectable.connect() as connection:
@@ -77,4 +76,3 @@ else:
     import asyncio
 
     asyncio.run(run_migrations_online())
-
