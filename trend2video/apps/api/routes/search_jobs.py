@@ -94,5 +94,5 @@ async def build_candidates(job_id: int) -> dict[str, int]:
 
 
 @router.post("/{job_id}/generate-scripts")
-async def generate_scripts(job_id: int) -> dict[str, int]:
+async def generate_scripts(job_id: int) -> dict[str, int | list[int]]:
     return await run_generate_scripts(job_id=job_id)

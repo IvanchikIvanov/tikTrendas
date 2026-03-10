@@ -24,8 +24,8 @@ async def list_candidates(
 async def generate_script_for_candidate(
     candidate_id: int,
     repo: ContentCandidateRepository = Depends(get_content_candidate_repository),
-) -> dict[str, int]:
+) -> dict[str, Any]:
     candidate = await repo.get_by_id(candidate_id)
     if candidate is None:
         raise HTTPException(status_code=404, detail="candidate not found")
-    return await run_generate_scripts(job_id=candidate.job_id, candidate_id=candidate_id, limit=1)
+    return await run_generate_scripts(candidate_id=candidate_id, limit=1)

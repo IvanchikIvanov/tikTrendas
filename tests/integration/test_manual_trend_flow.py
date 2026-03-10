@@ -2,8 +2,71 @@ from __future__ import annotations
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from trend2video.apps.api.main import app
+from trend2video.core.db import get_session_factory
+from trend2video.persistence.models import ScriptORM
+
+
+@pytest.mark.asyncio
+async def test_manual_trend_to_script_generation_persists_script() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        create_trend = await client.post(
+            "/manual-trends",
+            json={
+                "title": "for free",
+                "trend_type": "keyword",
+                "country": "Belarus",
+                "time_window": "7d",
+                "notes": "adapt to free audit offer",
+                "reference_hook_texts": ["try it for free", "get it for free"],
+                "related_video_urls": ["https://www.tiktok.com/@demo/video/123"],
+                "manual_tags": ["offer", "promo", "ecommerce"],
+                "priority": 1,
+                "references": [
+                    {
+                        "source_platform": "tiktok",
+                        "source_url": "https://www.tiktok.com/@demo/video/123",
+                        "hook_text": "try it for free",
+                    }
+                ],
+            },
+        )
+        assert create_trend.status_code == 200
+        trend_id = create_trend.json()["id"]
+
+        build_candidate = await client.post(f"/manual-trends/{trend_id}/build-candidate")
+        assert build_candidate.status_code == 200
+        assert build_candidate.json()["content_candidates_built"] == 1
+
+        trend_details = await client.get(f"/manual-trends/{trend_id}")
+        assert trend_details.status_code == 200
+        candidate_id = trend_details.json()["candidates"][0]["id"]
+
+        generate_script = await client.post(f"/candidates/{candidate_id}/generate-script")
+        assert generate_script.status_code == 200
+        payload = generate_script.json()
+        assert payload["candidate_id"] == candidate_id
+        assert payload["candidate_ids"] == [candidate_id]
+        assert payload["scripts_generated"] == 1
+        assert len(payload["created_script_ids"]) == 1
+        script_id = payload["created_script_ids"][0]
+
+        scripts = await client.get("/scripts")
+        assert scripts.status_code == 200
+        assert len(scripts.json()) == 1
+        assert scripts.json()[0]["id"] == script_id
+
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            persisted_script = (
+                await session.execute(select(ScriptORM).where(ScriptORM.id == script_id))
+            ).scalars().first()
+        assert persisted_script is not None
+        assert persisted_script.content_candidate_id == candidate_id
+        assert persisted_script.keyword_trend_id is None
 
 
 @pytest.mark.asyncio
@@ -49,11 +112,24 @@ async def test_manual_trend_to_review_and_publish_flow(monkeypatch: pytest.Monke
 
         generate_script = await client.post(f"/candidates/{candidate_id}/generate-script")
         assert generate_script.status_code == 200
-        assert generate_script.json()["scripts_generated"] == 1
+        payload = generate_script.json()
+        assert payload["candidate_id"] == candidate_id
+        assert payload["scripts_generated"] == 1
+        assert len(payload["created_script_ids"]) == 1
+        script_id = payload["created_script_ids"][0]
 
         scripts = await client.get("/scripts")
         assert scripts.status_code == 200
-        script_id = scripts.json()[0]["id"]
+        assert scripts.json()[0]["id"] == script_id
+
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            persisted_script = (
+                await session.execute(select(ScriptORM).where(ScriptORM.id == script_id))
+            ).scalars().first()
+        assert persisted_script is not None
+        assert persisted_script.content_candidate_id == candidate_id
+        assert persisted_script.keyword_trend_id is None
 
         asset = await client.post(
             "/assets",

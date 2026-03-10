@@ -20,9 +20,11 @@ async def run_generate_scripts(
     job_id: int | None = None,
     candidate_id: int | None = None,
     limit: int = 10,
-) -> dict[str, int]:
+) -> dict[str, int | list[int]]:
     session_factory = get_session_factory()
     generated = 0
+    created_script_ids: list[int] = []
+    processed_candidate_ids: list[int] = []
     engine = ScriptEngine()
     resolver = TemplateResolver()
     async with session_factory() as session:
@@ -69,10 +71,17 @@ async def run_generate_scripts(
             if tmpl_orm is None:
                 continue
             script = await engine.generate(candidate, keyword, related_videos, template, get_settings().brand_context)
-            await script_repo.create_for_candidate(candidate, keyword, tmpl_orm, script)
+            persisted_script = await script_repo.create_for_candidate(candidate, keyword, tmpl_orm, script)
             await candidate_repo.mark_status(candidate.id, ContentCandidateStatus.SCRIPT_GENERATED)
             generated += 1
-    return {"scripts_generated": generated}
+            created_script_ids.append(persisted_script.id)
+            processed_candidate_ids.append(candidate.id)
+    return {
+        "candidate_id": candidate_id or (processed_candidate_ids[0] if len(processed_candidate_ids) == 1 else 0),
+        "candidate_ids": processed_candidate_ids,
+        "created_script_ids": created_script_ids,
+        "scripts_generated": generated,
+    }
 
 
 if __name__ == "__main__":
